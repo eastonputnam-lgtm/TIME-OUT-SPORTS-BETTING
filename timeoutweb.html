@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Time Out - Bet Screen Time on Sports</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons for modern Apple-style UI symbols -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F9FF',
+              100: '#E0F2FE',
+              200: '#BAE6FD',
+              300: '#7DD3FC',
+              400: '#38BDF8',
+              500: '#0EA5E9',
+              600: '#0284C7',
+              700: '#0369A1',
+              800: '#075985',
+              900: '#0C4A6E',
+            },
+            iosgray: {
+              50: '#F8FAFC',
+              100: '#F1F5F9',
+              200: '#E2E8F0',
+              300: '#CBD5E1',
+              400: '#94A3B8',
+              500: '#64748B',
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          boxShadow: {
+            'ios': '0 4px 20px -2px rgba(14, 165, 233, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
+            'ios-elevated': '0 12px 30px -4px rgba(14, 165, 233, 0.16), 0 4px 10px -2px rgba(0, 0, 0, 0.05)',
+            'pill': '0 2px 8px rgba(14, 165, 233, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .active-nav {
+      color: #0284C7;
+      font-weight: 600;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .live-dot {
+      animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-0 sm:p-4 text-slate-800 antialiased font-sans">
+
+<div id="device-frame" class="w-full sm:max-w-[412px] h-[100dvh] sm:h-[860px] bg-brand-50 sm:rounded-[44px] shadow-2xl relative overflow-hidden flex flex-col border border-brand-100">
+  
+  <!-- Dynamic Island & Status Bar -->
+  <div class="w-full pt-2 pb-1 px-6 flex justify-between items-center text-xs font-semibold text-slate-600 z-30 select-none">
+    <span id="system-time">9:41</span>
+    <!-- Dynamic Island Pill -->
+    <div class="w-24 h-5 bg-slate-900 rounded-full flex items-center justify-center space-x-1.5 px-2">
+      <div class="w-1.5 h-1.5 rounded-full bg-brand-400"></div>
+      <span class="text-[9px] text-white tracking-widest uppercase font-mono">TimeOut</span>
+    </div>
+    <div class="flex items-center space-x-1.5 text-slate-700">
+      <i class="ph ph-cell-signal-full text-xs"></i>
+      <i class="ph ph-wifi-high text-xs"></i>
+      <i class="ph ph-battery-charging text-sm text-brand-600"></i>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header id="app-header" class="px-4 py-2.5 flex items-center justify-between border-b border-brand-100 bg-white/90 backdrop-blur-md sticky top-0 z-20">
+    <button onclick="toggleSettingsDrawer(true)" class="w-9 h-9 rounded-full bg-brand-50 hover:bg-brand-100 flex items-center justify-center text-brand-700 transition">
+      <i class="ph-bold ph-list text-lg"></i>
+    </button>
+    <div class="flex items-center space-x-1.5 cursor-pointer" onclick="switchTab('home')">
+      <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center text-white shadow-sm">
+        <i class="ph-bold ph-hourglass-high text-xs"></i>
+      </div>
+      <h1 class="text-base font-bold tracking-tight text-slate-900">Time Out</h1>
+    </div>
+    <!-- Live Screen Time Balance Pill -->
+    <div id="balance-pill" class="flex items-center space-x-1.5 bg-gradient-to-r from-brand-100 to-brand-50 border border-brand-200 px-3 py-1 rounded-full shadow-sm cursor-pointer" onclick="switchTab('mybets')">
+      <span class="text-xs">⚡</span>
+      <span id="user-balance-display" class="font-extrabold text-xs text-brand-700 font-mono">60m</span>
+      <span class="text-[10px] text-brand-600 font-medium uppercase tracking-wide">left</span>
+    </div>
+  </header>
+
+  <!-- Global Toast Notification -->
+  <div id="toast-notification" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 transform -translate-y-12 opacity-0 pointer-events-none transition-all duration-300 ease-out">
+    <div class="bg-slate-900 text-white px-4 py-2 rounded-full shadow-xl flex items-center space-x-2 text-xs font-medium">
+      <i id="toast-icon" class="ph-fill ph-check-circle text-brand-400 text-base"></i>
+      <span id="toast-message">Bet placed! Good luck!</span>
+    </div>
+  </div>
+
+  <main class="flex-1 overflow-y-auto no-scrollbar relative bg-brand-50 pb-20">
+    
+    <!-- ================= VIEW 1: HOME FEED (UPCOMING PRE-GAME ONLY) ================= -->
+    <section id="view-home" class="p-4 space-y-3">
+      
+      <!-- Welcome Hero Banner -->
+      <div class="bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 rounded-2xl p-4 text-white shadow-ios">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-[11px] font-semibold tracking-wider text-brand-100 uppercase">Daily Screen Time Bank</p>
+            <h2 class="text-xl font-black mt-0.5"><span id="hero-minutes">60</span> Minutes Allowed</h2>
+          </div>
+          <span class="bg-white/20 backdrop-blur-sm text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">Pre-Game Only</span>
+        </div>
+        <p class="text-xs text-brand-50/90 mt-1.5 leading-relaxed">
+          Wager minutes on upcoming games. Win to earn more app time; lose and your time is trimmed!
+        </p>
+      </div>
+
+      <!-- Scope Switcher: My Leagues vs All Sports -->
+      <div class="flex items-center justify-between pt-1">
+        <div class="bg-white p-1 rounded-xl shadow-sm border border-brand-100 flex w-full max-w-[260px]">
+          <button id="filter-scope-myleagues" onclick="setScope('myleagues')" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-white bg-brand-600 shadow-sm">
+            My Leagues
+          </button>
+          <button id="filter-scope-all" onclick="setScope('all')" class="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-500 hover:text-slate-800">
+            All Sports
+          </button>
+        </div>
+        <button onclick="openLeaguePreferencesModal()" class="text-xs text-brand-600 hover:text-brand-800 font-semibold flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-xl border border-brand-100 shadow-sm">
+          <i class="ph ph-faders"></i>
+          <span>Edit</span>
+        </button>
+      </div>
+
+      <!-- Horizontal League Chips Filter -->
+      <div id="league-pill-container" class="flex space-x-2 overflow-x-auto no-scrollbar py-1">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Notice Banner on Rules -->
+      <div class="flex items-center space-x-2 bg-white/70 border border-brand-200/70 px-3 py-2 rounded-xl text-[11px] text-slate-600">
+        <i class="ph ph-shield-check text-brand-600 text-sm flex-shrink-0"></i>
+        <span>Bets lock once a match starts. Follow in-progress matches in <strong>My Bets</strong>!</span>
+      </div>
+
+      <!-- Game Cards Container -->
+      <div class="space-y-3" id="upcoming-games-list">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW 2: MY BETS & LIVE TRACKING ================= -->
+    <section id="view-mybets" class="p-4 space-y-4 hidden">
+      <!-- Active Upside Summary Banner -->
+      <div class="bg-white rounded-2xl p-4 border border-brand-100 shadow-ios">
+        <div class="flex items-center justify-between">
+          <div class="space-y-0.5">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Potential Upside</span>
+            <h3 class="text-xl font-extrabold text-brand-700" id="potential-payout-summary">+0.0 min</h3>
+          </div>
+          <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600">
+            <i class="ph-bold ph-trend-up text-lg"></i>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2 border-t border-slate-100 pt-2 flex items-center justify-between">
+          <span>Active Wagers: <strong id="active-bets-count" class="text-slate-800">0</strong></span>
+          <button onclick="advanceSimulatedGames()" class="text-brand-600 hover:text-brand-700 font-bold flex items-center space-x-1">
+            <i class="ph-bold ph-arrows-clockwise"></i>
+            <span>Simulate Clock</span>
+          </button>
+        </p>
+      </div>
+
+      <!-- Live Games Section (Tracking Only) -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-red-500 live-dot"></span>
+            <span>Live Matches (Tracking Only)</span>
+          </h2>
+          <span class="text-[11px] text-slate-400">Updates dynamically</span>
+        </div>
+        <div id="live-games-container" class="space-y-3">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Upcoming Bets Section (Pre-Game Slips) -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Upcoming Bets (Pre-Game)</h2>
+          <span class="text-[11px] text-slate-400">Can cancel for full refund</span>
+        </div>
+        <div id="upcoming-bets-container" class="space-y-3">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= VIEW 3: LEADERBOARDS ================= -->
+    <section id="view-leaderboard" class="p-4 space-y-4 hidden">
+      <!-- Segmented Toggle -->
+      <div class="bg-white p-1 rounded-xl shadow-sm border border-brand-100 flex w-full">
+        <button id="lb-tab-global" onclick="switchLeaderboard('global')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-white bg-brand-600 shadow-sm transition">
+          Global Screen Masters
+        </button>
+        <button id="lb-tab-friends" onclick="switchLeaderboard('friends')" class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition">
+          Friends Circle
+        </button>
+      </div>
+
+      <!-- Podium Top 3 -->
+      <div class="bg-gradient-to-b from-white to-brand-50/50 rounded-2xl p-4 border border-brand-100 shadow-ios">
+        <div class="flex justify-around items-end pt-3 pb-1" id="podium-container">
+          <!-- Dynamically filled -->
+        </div>
+      </div>
+
+      <!-- Ranking List -->
+      <div class="bg-white rounded-2xl border border-brand-100 shadow-ios overflow-hidden">
+        <div class="px-4 py-2.5 bg-brand-50/60 border-b border-brand-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+          <span>Rank & User</span>
+          <span>Banked Minutes</span>
+        </div>
+        <div id="leaderboard-list" class="divide-y divide-slate-100">
+          <!-- Dynamically filled -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Tab Bar -->
+  <nav class="absolute bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-brand-100 flex items-center justify-around px-3 z-30">
+    <button onclick="switchTab('home')" id="nav-btn-home" class="flex flex-col items-center justify-center flex-1 py-1 active-nav transition">
+      <i class="ph-bold ph-newspaper text-xl"></i>
+      <span class="text-[10px] mt-0.5 tracking-tight font-medium">Home</span>
+    </button>
+    <button onclick="switchTab('mybets')" id="nav-btn-mybets" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-brand-600 transition relative">
+      <div class="relative">
+        <i class="ph-bold ph-ticket text-xl"></i>
+        <span id="nav-bets-badge" class="hidden absolute -top-1 -right-2 bg-brand-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
+      </div>
+      <span class="text-[10px] mt-0.5 tracking-tight font-medium">My Bets</span>
+    </button>
+    <button onclick="switchTab('leaderboard')" id="nav-btn-leaderboard" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-brand-600 transition">
+      <i class="ph-bold ph-trophy text-xl"></i>
+      <span class="text-[10px] mt-0.5 tracking-tight font-medium">Rankings</span>
+    </button>
+  </nav>
+
+  <!-- ================= BET SLIP MODAL ================= -->
+  <div id="bet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center opacity-0 pointer-events-none transition-all duration-300">
+    <div class="w-full sm:max-w-[390px] bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-brand-100 transform translate-y-full sm:translate-y-0 sm:scale-95 transition-all duration-300" id="bet-modal-card">
+      <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-3 sm:hidden"></div>
+      
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100">
+            Pre-Game Bet Slip
+          </span>
+          <h3 id="modal-matchup-title" class="text-base font-bold text-slate-900 mt-1">CHI Bears vs PHI Eagles</h3>
+          <p id="modal-selection-text" class="text-xs text-brand-700 font-semibold">Under 41.5 (-110)</p>
+        </div>
+        <button onclick="closeBetModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Live Dynamic Calculator Card -->
+      <div class="bg-gradient-to-br from-brand-50 to-white rounded-2xl p-4 my-4 border border-brand-200 shadow-sm">
+        <div class="flex justify-between items-center text-xs text-slate-500 mb-1">
+          <span>Screen Time at Stake</span>
+          <span>Balance: <strong id="modal-user-balance" class="text-brand-700 font-mono">60m</strong></span>
+        </div>
+
+        <div class="flex items-center justify-center my-3 space-x-4">
+          <button onclick="adjustWager(-5)" class="w-10 h-10 rounded-full bg-white border border-brand-200 shadow-sm flex items-center justify-center text-lg font-bold text-brand-700 hover:bg-brand-50 active:scale-95 transition">
+            -5
+          </button>
+          <div class="text-center min-w-[110px]">
+            <span id="wager-amount-display" class="text-4xl font-black text-slate-900 font-mono">15</span>
+            <span class="text-xs font-bold text-slate-500 block uppercase tracking-wide">minutes</span>
+          </div>
+          <button onclick="adjustWager(5)" class="w-10 h-10 rounded-full bg-white border border-brand-200 shadow-sm flex items-center justify-center text-lg font-bold text-brand-700 hover:bg-brand-50 active:scale-95 transition">
+            +5
+          </button>
+        </div>
+
+        <!-- Slider -->
+        <input type="range" id="wager-slider" min="1" max="60" value="15" oninput="onSliderWagerChange(this.value)" class="w-full accent-brand-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+
+        <!-- Calculator Result Table -->
+        <div class="mt-4 pt-3 border-t border-brand-100 flex justify-between items-center">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400">Potential Return</span>
+            <p id="modal-potential-payout" class="text-lg font-black text-emerald-600 font-mono">+28.6 min</p>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] uppercase font-bold text-slate-400">Net Screen Time Gain</span>
+            <p id="modal-net-profit" class="text-xs font-bold text-slate-700 font-mono">+13.6 min</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="closeBetModal()" class="py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition">
+          Cancel
+        </button>
+        <button onclick="confirmPlaceBet()" class="py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md shadow-brand-500/30 active:scale-[0.98] transition flex items-center justify-center space-x-1.5">
+          <i class="ph-bold ph-lock-simple"></i>
+          <span>Lock In Bet</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SETTINGS DRAWER ================= -->
+  <div id="settings-drawer" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 pointer-events-none opacity-0 transition-opacity duration-300">
+    <div id="drawer-panel" class="w-4/5 max-w-[320px] h-full bg-white shadow-2xl p-5 flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-out border-r border-brand-100 overflow-y-auto no-scrollbar">
+      <div>
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold">
+              <i class="ph-bold ph-hourglass-high"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Time Out</h2>
+              <p class="text-[10px] text-slate-400">Digital Wellness Sportsbook</p>
+            </div>
+          </div>
+          <button onclick="toggleSettingsDrawer(false)" class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+            <i class="ph-bold ph-x text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Account Info Pill -->
+        <div class="bg-brand-50 rounded-xl p-3 my-3 border border-brand-100 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <div class="w-9 h-9 rounded-full bg-brand-200 text-brand-800 font-bold flex items-center justify-center text-xs" id="drawer-avatar">
+              JD
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-800" id="drawer-username">@jordan_d</p>
+              <p class="text-[10px] text-brand-600 font-semibold" id="drawer-streak">Streak: 4 Days Active</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono font-bold text-brand-700" id="drawer-balance-badge">60m</span>
+        </div>
+
+        <!-- Settings Options -->
+        <div class="space-y-4 text-xs">
+          <!-- App Limits: Protected with 15-Minute Screen Time Penalty Barrier -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Restricted Apps</h4>
+              <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center space-x-1">
+                <i class="ph-bold ph-lock-key"></i>
+                <span>Protected</span>
+              </span>
+            </div>
+
+            <!-- List of Current Active Apps (Read-only until unlocked) -->
+            <div id="drawer-apps-list" class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+              <!-- Rendered via JS -->
+            </div>
+
+            <!-- Unlock / Pay Barrier -->
+            <div id="app-restriction-barrier-box" class="mt-2 p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-slate-700">
+              <p class="text-[10px] text-sky-900 leading-tight mb-2">
+                🔒 <strong>Discipline Guard:</strong> Modifying restricted apps requires a penalty of <strong>15 Screen Time Minutes</strong>.
+              </p>
+              <button id="btn-unlock-app-limits" onclick="openAppRestrictionsEditor()" class="w-full py-2 px-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] transition shadow-sm flex items-center justify-center space-x-1">
+                <i class="ph-bold ph-key"></i>
+                <span>Unlock Editor (-15 Min)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Navigation to Mini Games & Preferences -->
+          <div class="space-y-1.5 pt-1">
+            <button onclick="openHorseRaceModal()" class="w-full text-left py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/60 border border-amber-200 text-amber-900 font-semibold flex items-center justify-between hover:bg-amber-100 transition">
+              <span class="flex items-center space-x-2">
+                <span>🏇</span>
+                <span>Horse Derby Mini-Game</span>
+              </span>
+              <i class="ph-bold ph-caret-right text-amber-700 text-xs"></i>
+            </button>
+
+            <button onclick="openLeaguePreferencesModal()" class="w-full text-left py-2.5 px-3 rounded-xl bg-brand-50 border border-brand-100 text-brand-900 font-semibold flex items-center justify-between hover:bg-brand-100 transition">
+              <span class="flex items-center space-x-2">
+                <i class="ph ph-sliders text-brand-600"></i>
+                <span>My Leagues Settings</span>
+              </span>
+              <i class="ph-bold ph-caret-right text-brand-600 text-xs"></i>
+            </button>
+
+            <div class="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-xl border border-slate-100">
+              <span class="text-slate-700 font-medium">Disable Wellness Prompts</span>
+              <input type="checkbox" class="accent-brand-600 rounded">
+            </div>
+          </div>
+
+          <!-- Danger / Demo Testing Controls -->
+          <div class="pt-2 border-t border-slate-100">
+            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Simulation Sandbox</p>
+            <button onclick="triggerImmediateLockout()" class="w-full py-2.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs flex items-center justify-center space-x-2 hover:bg-rose-100 transition">
+              <i class="ph-bold ph-hourglass-simple-medium"></i>
+              <span>Simulate 0 Min Lockout</span>
+            </button>
+            <button onclick="resetBalance(60)" class="w-full mt-1.5 py-2 px-3 rounded-xl bg-brand-50 text-brand-700 font-medium text-[11px] flex items-center justify-center space-x-1 hover:bg-brand-100 transition">
+              <i class="ph ph-arrow-counter-clockwise"></i>
+              <span>Refill Balance to 60 min</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-100">
+        <button onclick="simulateLogout()" class="w-full py-2 px-3 text-slate-400 hover:text-rose-600 text-xs font-semibold flex items-center justify-center space-x-1.5">
+          <i class="ph ph-sign-out"></i>
+          <span>Log Out</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= APP RESTRICTIONS EDITOR MODAL ================= -->
+  <div id="app-editor-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="w-full max-w-[340px] bg-white rounded-3xl p-5 shadow-2xl border border-brand-100 space-y-3">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="flex items-center space-x-1.5 text-brand-600">
+            <i class="ph-bold ph-lock-key-open text-sm"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Editor Unlocked (-15m Paid)</span>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mt-0.5">Edit Restricted Apps</h3>
+          <p class="text-[11px] text-slate-400">Choose which apps will lock at 0 min</p>
+        </div>
+        <button onclick="closeAppRestrictionsEditor()" class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- App Checkboxes -->
+      <div class="space-y-2 py-2" id="app-editor-checkbox-list">
+        <!-- Injected via JS -->
+      </div>
+
+      <p class="text-[10px] text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-100">
+        Note: You must select at least 1 restricted app to maintain digital discipline.
+      </p>
+
+      <button onclick="saveAppRestrictions()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-md transition">
+        Save Restricted Apps
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= VIRTUAL HORSE RACE MODAL ================= -->
+  <div id="horse-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="w-full max-w-[370px] bg-white rounded-3xl p-5 shadow-2xl border border-amber-200 space-y-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <span class="text-2xl">🏇</span>
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base">Time Out Derby</h3>
+            <p class="text-[10px] text-slate-400">Quick 5-second Screen Time sprint</p>
+          </div>
+        </div>
+        <button onclick="closeHorseRaceModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Horse Selector -->
+      <div class="grid grid-cols-2 gap-2 text-xs" id="horse-selection-grid">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Wager Selector -->
+      <div class="bg-amber-50/60 p-3 rounded-2xl border border-amber-100 flex items-center justify-between">
+        <span class="text-xs font-semibold text-amber-900">Wager Minutes:</span>
+        <div class="flex items-center space-x-2">
+          <button onclick="adjustDerbyWager(-2)" class="w-7 h-7 bg-white rounded-lg border border-amber-200 font-bold text-amber-800 text-sm">-</button>
+          <span id="derby-wager-display" class="font-mono font-bold text-amber-900 text-sm w-8 text-center">5m</span>
+          <button onclick="adjustDerbyWager(2)" class="w-7 h-7 bg-white rounded-lg border border-amber-200 font-bold text-amber-800 text-sm">+</button>
+        </div>
+      </div>
+
+      <!-- Visual Race Track -->
+      <div class="bg-slate-900 p-3 rounded-2xl space-y-2 relative overflow-hidden" id="race-track">
+        <div class="absolute right-6 top-0 bottom-0 w-0.5 border-r border-dashed border-red-500 opacity-60 z-10"></div>
+        <div id="track-horse-0" class="h-6 bg-slate-800 rounded flex items-center px-1 relative transition-all duration-100 ease-linear" style="width: 20%;">
+          <span class="text-sm">🐎</span>
+        </div>
+        <div id="track-horse-1" class="h-6 bg-slate-800 rounded flex items-center px-1 relative transition-all duration-100 ease-linear" style="width: 20%;">
+          <span class="text-sm">🦄</span>
+        </div>
+        <div id="track-horse-2" class="h-6 bg-slate-800 rounded flex items-center px-1 relative transition-all duration-100 ease-linear" style="width: 20%;">
+          <span class="text-sm">🦓</span>
+        </div>
+        <div id="track-horse-3" class="h-6 bg-slate-800 rounded flex items-center px-1 relative transition-all duration-100 ease-linear" style="width: 20%;">
+          <span class="text-sm">🐆</span>
+        </div>
+      </div>
+
+      <div id="derby-result-banner" class="text-center py-1 text-xs font-bold text-slate-700 min-h-[24px]">
+        Pick a runner and tap Start Race!
+      </div>
+
+      <button id="start-derby-btn" onclick="startHorseRace()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl shadow-md text-xs active:scale-[0.98] transition">
+        Start Race (5m Wager)
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= LEAGUE PREFERENCES MODAL ================= -->
+  <div id="league-pref-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="w-full max-w-[340px] bg-white rounded-3xl p-5 shadow-2xl border border-brand-100 space-y-3">
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Select Your Leagues</h3>
+          <p class="text-[11px] text-slate-400">Filter what displays under "My Leagues"</p>
+        </div>
+        <button onclick="closeLeaguePreferencesModal()" class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2 py-2" id="league-checkbox-list">
+        <!-- Rendered via JS -->
+      </div>
+
+      <button onclick="saveLeaguePreferences()" class="w-full py-2.5 bg-brand-600 text-white font-bold rounded-xl text-xs shadow-md">
+        Save Preferences
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= SIMULATED SYSTEM LOCKOUT (0 MIN) ================= -->
+  <div id="lockout-screen" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-between p-8 text-center opacity-0 pointer-events-none transition-opacity duration-500">
+    <div class="w-full flex justify-end">
+      <span class="text-xs font-mono text-slate-500">iOS Screen Time Lock</span>
+    </div>
+
+    <div class="space-y-4 max-w-xs flex flex-col items-center my-auto">
+      <!-- iOS Lockout Hourglass Icon -->
+      <div class="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-800 shadow-2xl flex items-center justify-center text-brand-400 mb-2">
+        <i class="ph-fill ph-hourglass-medium text-5xl"></i>
+      </div>
+
+      <h2 class="text-2xl font-bold text-white tracking-tight">Time's Up</h2>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        You've run out of daily Screen Time minutes betting on <strong>Time Out</strong>.
+      </p>
+
+      <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl text-left w-full space-y-2">
+        <p class="text-[11px] font-semibold text-slate-300 flex items-center space-x-1.5">
+          <i class="ph ph-lock text-rose-400"></i>
+          <span>Locked Applications:</span>
+        </p>
+        <div id="lockout-apps-display" class="flex flex-wrap gap-2 text-slate-400 text-xs pl-2">
+          <!-- Injected dynamically based on user's restricted apps -->
+        </div>
+        <p class="text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+          Locked until your sports bets settle with a win, or tomorrow's daily balance reset.
+        </p>
+      </div>
+    </div>
+
+    <div class="w-full space-y-2.5">
+      <button onclick="dismissLockoutToBets()" class="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-brand-600/30">
+        Check Bet Status in Time Out
+      </button>
+      <button onclick="emergencyUnlockFiveMinutes()" class="w-full py-2.5 px-4 bg-slate-900 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 font-semibold rounded-2xl text-xs transition">
+        Request 5-Minute Grace Period
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= AUTHENTICATION MODAL (SIGN IN vs SIGN UP) ================= -->
+  <div id="auth-modal" class="fixed inset-0 bg-brand-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-[360px] bg-white rounded-3xl p-6 shadow-2xl border border-brand-100 space-y-4 max-h-[92dvh] overflow-y-auto no-scrollbar">
+      
+      <!-- Brand Logo -->
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 bg-gradient-to-tr from-brand-600 to-brand-400 text-white rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-brand-500/30">
+          <i class="ph-bold ph-hourglass-high text-2xl"></i>
+        </div>
+        <h2 class="text-xl font-extrabold text-slate-900">Time Out</h2>
+        <p class="text-xs text-slate-500">Wager screen time instead of money.</p>
+      </div>
+
+      <!-- Segmented Toggle: Sign In vs Create Account -->
+      <div class="bg-slate-100 p-1 rounded-xl flex">
+        <button id="tab-auth-login" onclick="toggleAuthMode('login')" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-white text-brand-700 shadow-sm">
+          Sign In
+        </button>
+        <button id="tab-auth-signup" onclick="toggleAuthMode('signup')" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
+          Create Account
+        </button>
+      </div>
+
+      <!-- ============ FLOW A: SIGN IN ============ -->
+      <div id="flow-signin" class="space-y-3">
+        <div>
+          <label class="text-[11px] font-bold text-slate-600 uppercase">Username / Handle</label>
+          <input id="signin-username" type="text" value="JordanD" class="w-full mt-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 font-semibold text-slate-800">
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-600 uppercase">Passcode</label>
+          <input type="password" value="••••••••" class="w-full mt-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 text-slate-800">
+        </div>
+        <button onclick="handleSignInSubmit()" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-md transition">
+          Log In & Restore Profile
+        </button>
+        <p class="text-[11px] text-center text-slate-400">
+          New to Time Out? <button onclick="toggleAuthMode('signup')" class="text-brand-600 font-bold underline">Create an account</button>
+        </p>
+      </div>
+
+      <!-- ============ FLOW B: CREATE ACCOUNT ============ -->
+      <div id="flow-signup" class="space-y-3.5 hidden">
+        <!-- Step 1: Credentials -->
+        <div id="signup-step-1" class="space-y-3">
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 uppercase">Desired Username</label>
+            <input id="signup-username" type="text" placeholder="e.g. AlexZen" class="w-full mt-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 font-semibold text-slate-800">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 uppercase">Create Passcode</label>
+            <input id="signup-password" type="password" value="wellness123" class="w-full mt-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 text-slate-800">
+          </div>
+          <button onclick="goToSignupStep2()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-md transition">
+            Continue to Preferences (Step 1/2)
+          </button>
+        </div>
+
+        <!-- Step 2: League & Mandatory App Restriction Selection -->
+        <div id="signup-step-2" class="space-y-3.5 hidden">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-[11px] font-bold text-slate-700 uppercase">1. Leagues You Follow</label>
+              <span class="text-[10px] text-slate-400">Pick 1+</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-xs" id="signup-league-pills">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-[11px] font-bold text-slate-700 uppercase">2. Select Apps to Lock</label>
+              <span class="text-[10px] text-rose-500 font-bold">Important</span>
+            </div>
+            <div class="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200" id="signup-apps-checklist">
+              <!-- Rendered via JS -->
+            </div>
+            <p class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-1.5 leading-snug">
+              ⚠️ <strong>Strict Rule:</strong> Selected apps lock automatically if your screen time hits 0m. Changing these later costs a <strong>15-Minute Penalty Fee</strong>!
+            </p>
+          </div>
+
+          <!-- Bonus Badge -->
+          <div class="bg-gradient-to-r from-brand-50 to-brand-100/70 border border-brand-200 p-2.5 rounded-xl text-center">
+            <span class="text-[10px] font-bold text-brand-800 uppercase tracking-wide">Starting Bonus</span>
+            <p class="text-base font-black text-brand-600 font-mono">⚡ 60 Minutes Screen Time</p>
+          </div>
+
+          <div class="flex space-x-2">
+            <button onclick="backToSignupStep1()" class="py-2.5 px-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50">
+              Back
+            </button>
+            <button onclick="finishSignUp()" class="flex-1 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white font-bold rounded-xl text-xs shadow-md transition">
+              Create Account (+60m)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ================= STATE STORE ================= */
+  const AppState = {
+    authMode: 'login', // 'login' | 'signup'
+    user: {
+      username: "JordanD",
+      handle: "@jordan_d",
+      balance: 60.0, // minutes
+      streak: 4
+    },
+    filter: {
+      scope: 'myleagues', // 'myleagues' | 'all'
+      selectedLeague: 'ALL', // 'ALL' or specific league
+    },
+    userLeagues: ['NFL', 'NBA', 'MLB'],
+    allLeagues: ['NFL', 'NBA', 'MLB', 'NHL', 'EPL'],
+
+    // Catalog of supported apps for restriction
+    supportedApps: [
+      { id: 'instagram', name: 'Instagram', icon: 'ph-fill ph-instagram-logo', color: 'text-pink-500' },
+      { id: 'tiktok', name: 'TikTok', icon: 'ph-fill ph-tiktok-logo', color: 'text-slate-900' },
+      { id: 'youtube', name: 'YouTube', icon: 'ph-fill ph-youtube-logo', color: 'text-red-600' },
+      { id: 'x', name: 'X / Twitter', icon: 'ph-fill ph-x-logo', color: 'text-slate-800' },
+      { id: 'snapchat', name: 'Snapchat', icon: 'ph-fill ph-snapchat-logo', color: 'text-amber-500' }
+    ],
+
+    // User's currently active restricted apps
+    restrictedApps: ['instagram', 'tiktok', 'youtube'],
+
+    // Upcoming games only (Wagers can ONLY be placed pre-game)
+    upcomingGames: [
+      {
+        id: 'nfl-1',
+        league: 'NFL',
+        homeTeam: 'PHI Eagles',
+        awayTeam: 'CHI Bears',
+        homeAbbr: 'PHI',
+        awayAbbr: 'CHI',
+        startTimeText: 'Starts in 42m',
+        timeBadge: 'Tonight 8:15 PM',
+        spread: { line: 3.5, fav: 'PHI', oddsHome: -110, oddsAway: -110 },
+        total: { line: 41.5, overOdds: -110, underOdds: -110 }
+      },
+      {
+        id: 'nba-1',
+        league: 'NBA',
+        homeTeam: 'BOS Celtics',
+        awayTeam: 'LAL Lakers',
+        homeAbbr: 'BOS',
+        awayAbbr: 'LAL',
+        startTimeText: 'Starts in 1h 15m',
+        timeBadge: 'Tonight 7:30 PM',
+        spread: { line: 6.5, fav: 'BOS', oddsHome: -108, oddsAway: -112 },
+        total: { line: 224.5, overOdds: -110, underOdds: -110 }
+      },
+      {
+        id: 'mlb-1',
+        league: 'MLB',
+        homeTeam: 'LAD Dodgers',
+        awayTeam: 'NY Yankees',
+        homeAbbr: 'LAD',
+        awayAbbr: 'NYY',
+        startTimeText: 'Starts in 2h 00m',
+        timeBadge: 'Tomorrow 1:10 PM',
+        spread: { line: 1.5, fav: 'LAD', oddsHome: +120, oddsAway: -140 },
+        total: { line: 8.5, overOdds: -105, underOdds: -115 }
+      },
+      {
+        id: 'nhl-1',
+        league: 'NHL',
+        homeTeam: 'VGK Golden Knights',
+        awayTeam: 'TOR Maple Leafs',
+        homeAbbr: 'VGK',
+        awayAbbr: 'TOR',
+        startTimeText: 'Starts in 3h 10m',
+        timeBadge: 'Tomorrow 7:00 PM',
+        spread: { line: 1.5, fav: 'VGK', oddsHome: +135, oddsAway: -155 },
+        total: { line: 6.0, overOdds: -110, underOdds: -110 }
+      },
+      {
+        id: 'epl-1',
+        league: 'EPL',
+        homeTeam: 'Arsenal',
+        awayTeam: 'Chelsea',
+        homeAbbr: 'ARS',
+        awayAbbr: 'CHE',
+        startTimeText: 'Starts in 5h',
+        timeBadge: 'Sat 10:00 AM',
+        spread: { line: 0.5, fav: 'ARS', oddsHome: -115, oddsAway: -105 },
+        total: { line: 2.5, overOdds: -110, underOdds: -110 }
+      }
+    ],
+
+    // Active placed bets
+    placedBets: [
+      {
+        id: 'bet-init-1',
+        gameId: 'live-nba-99',
+        league: 'NBA',
+        matchup: 'MIA Heat vs NY Knicks',
+        type: 'Spread',
+        pickText: 'NY Knicks -4.5 (-110)',
+        wagerMinutes: 10,
+        odds: -110,
+        potentialPayout: 19.09,
+        isLive: true,
+        // Live state tracking
+        gameClock: 'Q4 3:12',
+        homeScore: 102,
+        awayScore: 94,
+        isCovering: true
+      }
+    ],
+
+    // Horse Derby simulation
+    horses: [
+      { id: 0, name: 'Thunderbolt', oddsRatio: 2, icon: '🐎', color: 'text-amber-600' },
+      { id: 1, name: 'Lucky Gallop', oddsRatio: 3, icon: '🦄', color: 'text-blue-600' },
+      { id: 2, name: 'Midnight Run', oddsRatio: 4, icon: '🦓', color: 'text-purple-600' },
+      { id: 3, name: 'Pocket Rocket', oddsRatio: 5, icon: '🐆', color: 'text-rose-600' }
+    ],
+    selectedHorseIndex: 0,
+    derbyWager: 5,
+
+    // Active selection modal
+    currentModalSelection: null,
+    currentModalWager: 15,
+
+    // Leaderboards
+    leaderboardTab: 'global',
+    globalLeaderboard: [
+      { rank: 1, name: 'Sophia Chen', handle: '@chen_focus', minutes: 142.5, avatar: 'SC' },
+      { rank: 2, name: 'Marcus Miller', handle: '@marcus_m', minutes: 118.0, avatar: 'MM' },
+      { rank: 3, name: 'Elena Rostova', handle: '@elena_zen', minutes: 98.4, avatar: 'ER' },
+      { rank: 4, name: 'Jordan D (You)', handle: '@jordan_d', minutes: 60.0, avatar: 'JD', isMe: true },
+      { rank: 5, name: 'David Kim', handle: '@dkim_off', minutes: 54.0, avatar: 'DK' },
+      { rank: 6, name: 'Alex Rivera', handle: '@arivera', minutes: 39.5, avatar: 'AR' },
+    ],
+    friendsLeaderboard: [
+      { rank: 1, name: 'Jordan D (You)', handle: '@jordan_d', minutes: 60.0, avatar: 'JD', isMe: true },
+      { rank: 2, name: 'Taylor Swiftness', handle: '@taylor_fast', minutes: 48.0, avatar: 'TS' },
+      { rank: 3, name: 'Sammy Brooks', handle: '@sammylocks', minutes: 22.5, avatar: 'SB' },
+      { rank: 4, name: 'Chris Evans', handle: '@chrise', minutes: 0.0, avatar: 'CE', locked: true },
+    ]
+  };
+
+  function calculatePayout(wager, americanOdds) {
+    if (wager <= 0) return 0;
+    let multiplier;
+    if (americanOdds > 0) {
+      multiplier = (americanOdds / 100) + 1;
+    } else {
+      multiplier = (100 / Math.abs(americanOdds)) + 1;
+    }
+    return Number((wager * multiplier).toFixed(2));
+  }
+
+  function formatOdds(odds) {
+    return odds > 0 ? `+${odds}` : `${odds}`;
+  }
+
+  function showToast(message, isSuccess = true) {
+    const toast = document.getElementById('toast-notification');
+    const toastMsg = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+    
+    toastMsg.innerText = message;
+    toastIcon.className = isSuccess 
+      ? 'ph-fill ph-check-circle text-brand-400 text-base' 
+      : 'ph-fill ph-warning-circle text-rose-400 text-base';
+
+    toast.classList.remove('opacity-0', '-translate-y-12', 'pointer-events-none');
+    toast.classList.add('opacity-100', 'translate-y-0');
+
+    setTimeout(() => {
+      toast.classList.add('opacity-0', '-translate-y-12', 'pointer-events-none');
+      toast.classList.remove('opacity-100', 'translate-y-0');
+    }, 2400);
+  }
+
+  function checkLockoutState() {
+    if (AppState.user.balance <= 0.05) {
+      AppState.user.balance = 0;
+      updateBalanceDisplays();
+      triggerImmediateLockout();
+    }
+  }
+
+  function triggerImmediateLockout() {
+    toggleSettingsDrawer(false);
+    renderLockoutAppsList();
+    const screen = document.getElementById('lockout-screen');
+    screen.classList.remove('opacity-0', 'pointer-events-none');
+    screen.classList.add('opacity-100');
+  }
+
+  function renderLockoutAppsList() {
+    const container = document.getElementById('lockout-apps-display');
+    const activeAppObjects = AppState.supportedApps.filter(a => AppState.restrictedApps.includes(a.id));
+    container.innerHTML = activeAppObjects.map(a => `
+      <span class="inline-flex items-center space-x-1 bg-slate-900 border border-slate-700 px-2 py-1 rounded-lg text-slate-300">
+        <i class="${a.icon} ${a.color}"></i>
+        <span>${a.name}</span>
+      </span>
+    `).join('');
+  }
+
+  function dismissLockoutToBets() {
+    const screen = document.getElementById('lockout-screen');
+    screen.classList.add('opacity-0', 'pointer-events-none');
+    screen.classList.remove('opacity-100');
+    switchTab('mybets');
+  }
+
+  function emergencyUnlockFiveMinutes() {
+    AppState.user.balance += 5.0;
+    updateBalanceDisplays();
+    const screen = document.getElementById('lockout-screen');
+    screen.classList.add('opacity-0', 'pointer-events-none');
+    screen.classList.remove('opacity-100');
+    showToast("Granted 5-Minute emergency screen time!", true);
+  }
+
+  function resetBalance(mins) {
+    AppState.user.balance = mins;
+    updateBalanceDisplays();
+    toggleSettingsDrawer(false);
+    showToast(`Refilled balance to ${mins}m`);
+  }
+
+  function updateBalanceDisplays() {
+    const bal = AppState.user.balance.toFixed(1);
+    document.getElementById('user-balance-display').innerText = `${bal}m`;
+    document.getElementById('hero-minutes').innerText = bal;
+    document.getElementById('modal-user-balance').innerText = `${bal}m`;
+    document.getElementById('drawer-balance-badge').innerText = `${bal}m`;
+
+    // Update 'You' in leaderboards
+    const meGlobal = AppState.globalLeaderboard.find(x => x.isMe);
+    if (meGlobal) meGlobal.minutes = AppState.user.balance;
+    const meFriends = AppState.friendsLeaderboard.find(x => x.isMe);
+    if (meFriends) meFriends.minutes = AppState.user.balance;
+    renderLeaderboard();
+  }
+
+  function switchTab(tabId) {
+    const tabs = ['home', 'mybets', 'leaderboard'];
+    tabs.forEach(t => {
+      const view = document.getElementById(`view-${t}`);
+      const btn = document.getElementById(`nav-btn-${t}`);
+      if (t === tabId) {
+        view.classList.remove('hidden');
+        btn.classList.add('active-nav');
+        btn.classList.remove('text-slate-400');
+      } else {
+        view.classList.add('hidden');
+        btn.classList.remove('active-nav');
+        btn.classList.add('text-slate-400');
+      }
+    });
+
+    if (tabId === 'mybets') {
+      renderMyBets();
+    } else if (tabId === 'leaderboard') {
+      renderLeaderboard();
+    }
+  }
+
+  function setScope(scope) {
+    AppState.filter.scope = scope;
+    const btnMyLeagues = document.getElementById('filter-scope-myleagues');
+    const btnAll = document.getElementById('filter-scope-all');
+
+    if (scope === 'myleagues') {
+      btnMyLeagues.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-white bg-brand-600 shadow-sm";
+      btnAll.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-500 hover:text-slate-800";
+    } else {
+      btnAll.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-white bg-brand-600 shadow-sm";
+      btnMyLeagues.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-500 hover:text-slate-800";
+    }
+
+    renderLeaguePills();
+    renderUpcomingGames();
+  }
+
+  function setLeagueFilter(league) {
+    AppState.filter.selectedLeague = league;
+    renderLeaguePills();
+    renderUpcomingGames();
+  }
+
+  function renderLeaguePills() {
+    const container = document.getElementById('league-pill-container');
+    const visibleLeagues = AppState.filter.scope === 'myleagues' 
+      ? AppState.userLeagues 
+      : AppState.allLeagues;
+
+    let html = `
+      <button onclick="setLeagueFilter('ALL')" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+        AppState.filter.selectedLeague === 'ALL'
+          ? 'bg-brand-600 text-white shadow-pill'
+          : 'bg-white text-slate-600 border border-brand-100 hover:bg-brand-50'
+      }">
+        🔥 All ${AppState.filter.scope === 'myleagues' ? 'My Leagues' : 'Sports'}
+      </button>
+    `;
+
+    visibleLeagues.forEach(lg => {
+      const isSelected = AppState.filter.selectedLeague === lg;
+      html += `
+        <button onclick="setLeagueFilter('${lg}')" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+          isSelected
+            ? 'bg-brand-600 text-white shadow-pill'
+            : 'bg-white text-slate-600 border border-brand-100 hover:bg-brand-50'
+        }">
+          ${lg}
+        </button>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderUpcomingGames() {
+    const container = document.getElementById('upcoming-games-list');
+    const visibleLeagues = AppState.filter.scope === 'myleagues' 
+      ? AppState.userLeagues 
+      : AppState.allLeagues;
+
+    let filtered = AppState.upcomingGames.filter(g => visibleLeagues.includes(g.league));
+
+    if (AppState.filter.selectedLeague !== 'ALL') {
+      filtered = filtered.filter(g => g.league === AppState.filter.selectedLeague);
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 text-center border border-brand-100 shadow-sm space-y-2">
+          <i class="ph ph-calendar-x text-3xl text-slate-300"></i>
+          <p class="text-xs text-slate-500 font-medium">No upcoming games found for this league filter.</p>
+          <button onclick="setScope('all')" class="text-xs font-bold text-brand-600 underline">Switch to All Sports</button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filtered.map(game => {
+      const homeSpreadText = `${game.homeAbbr} -${game.spread.line} (${formatOdds(game.spread.oddsHome)})`;
+      const awaySpreadText = `${game.awayAbbr} +${game.spread.line} (${formatOdds(game.spread.oddsAway)})`;
+      const overText = `Over ${game.total.line} (${formatOdds(game.total.overOdds)})`;
+      const underText = `Under ${game.total.line} (${formatOdds(game.total.underOdds)})`;
+
+      return `
+        <div class="bg-white rounded-2xl p-4 border border-brand-100 shadow-ios transition-all hover:border-brand-200">
+          <!-- Game Header -->
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 border border-brand-100">
+                ${game.league}
+              </span>
+              <span class="text-xs font-bold text-slate-800">${game.awayTeam} @ ${game.homeTeam}</span>
+            </div>
+            <span class="text-[11px] font-medium text-brand-600 flex items-center space-x-1">
+              <i class="ph ph-clock"></i>
+              <span>${game.startTimeText}</span>
+            </span>
+          </div>
+
+          <!-- Pre-Game Status Badge -->
+          <div class="flex justify-between items-center py-2 text-[10px] text-slate-400">
+            <span class="font-medium">${game.timeBadge}</span>
+            <span class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold">Pre-Game Wagering Open</span>
+          </div>
+
+          <!-- 4 Clean Bet Chips -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <!-- Chip 1: Spread Away -->
+            <button onclick="openBetSlip('${game.id}', 'Spread', '${awaySpreadText}', ${game.spread.oddsAway})"
+              class="flex flex-col items-center justify-center p-2 rounded-xl bg-brand-50/50 hover:bg-brand-100/70 border border-brand-100 active:scale-95 transition group">
+              <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">Spread</span>
+              <span class="text-xs font-extrabold text-slate-900 group-hover:text-brand-800">${awaySpreadText}</span>
+            </button>
+
+            <!-- Chip 2: Spread Home -->
+            <button onclick="openBetSlip('${game.id}', 'Spread', '${homeSpreadText}', ${game.spread.oddsHome})"
+              class="flex flex-col items-center justify-center p-2 rounded-xl bg-brand-50/50 hover:bg-brand-100/70 border border-brand-100 active:scale-95 transition group">
+              <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">Spread</span>
+              <span class="text-xs font-extrabold text-slate-900 group-hover:text-brand-800">${homeSpreadText}</span>
+            </button>
+
+            <!-- Chip 3: Total Over -->
+            <button onclick="openBetSlip('${game.id}', 'Total', '${overText}', ${game.total.overOdds})"
+              class="flex flex-col items-center justify-center p-2 rounded-xl bg-brand-50/50 hover:bg-brand-100/70 border border-brand-100 active:scale-95 transition group">
+              <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">Total</span>
+              <span class="text-xs font-extrabold text-slate-900 group-hover:text-brand-800">${overText}</span>
+            </button>
+
+            <!-- Chip 4: Total Under -->
+            <button onclick="openBetSlip('${game.id}', 'Total', '${underText}', ${game.total.underOdds})"
+              class="flex flex-col items-center justify-center p-2 rounded-xl bg-brand-50/50 hover:bg-brand-100/70 border border-brand-100 active:scale-95 transition group">
+              <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">Total</span>
+              <span class="text-xs font-extrabold text-slate-900 group-hover:text-brand-800">${underText}</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openBetSlip(gameId, betType, pickText, odds) {
+    if (AppState.user.balance < 1) {
+      showToast("Out of screen time! Refill balance.", false);
+      triggerImmediateLockout();
+      return;
+    }
+
+    const game = AppState.upcomingGames.find(g => g.id === gameId);
+    if (!game) return;
+
+    AppState.currentModalSelection = {
+      gameId: game.id,
+      league: game.league,
+      matchup: `${game.awayTeam} vs ${game.homeTeam}`,
+      type: betType,
+      pickText: pickText,
+      odds: odds
+    };
+
+    AppState.currentModalWager = Math.min(15, Math.floor(AppState.user.balance));
+    if (AppState.currentModalWager < 1) AppState.currentModalWager = 1;
+
+    document.getElementById('modal-matchup-title').innerText = AppState.currentModalSelection.matchup;
+    document.getElementById('modal-selection-text').innerText = `${betType}: ${pickText}`;
+    
+    const slider = document.getElementById('wager-slider');
+    slider.max = Math.max(1, Math.floor(AppState.user.balance));
+    slider.value = AppState.currentModalWager;
+
+    updateModalCalculations();
+
+    const modal = document.getElementById('bet-modal');
+    const card = document.getElementById('bet-modal-card');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('opacity-100');
+    card.classList.remove('translate-y-full', 'sm:scale-95');
+    card.classList.add('translate-y-0', 'sm:scale-100');
+  }
+
+  function closeBetModal() {
+    const modal = document.getElementById('bet-modal');
+    const card = document.getElementById('bet-modal-card');
+    card.classList.add('translate-y-full', 'sm:scale-95');
+    card.classList.remove('translate-y-0', 'sm:scale-100');
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    modal.classList.remove('opacity-100');
+  }
+
+  function adjustWager(delta) {
+    const maxVal = Math.floor(AppState.user.balance);
+    let nextVal = AppState.currentModalWager + delta;
+    if (nextVal < 1) nextVal = 1;
+    if (nextVal > maxVal) nextVal = maxVal;
+    AppState.currentModalWager = nextVal;
+    document.getElementById('wager-slider').value = nextVal;
+    updateModalCalculations();
+  }
+
+  function onSliderWagerChange(val) {
+    AppState.currentModalWager = parseInt(val, 10);
+    updateModalCalculations();
+  }
+
+  function updateModalCalculations() {
+    const wager = AppState.currentModalWager;
+    const odds = AppState.currentModalSelection.odds;
+    const payout = calculatePayout(wager, odds);
+    const netProfit = Number((payout - wager).toFixed(2));
+
+    document.getElementById('wager-amount-display').innerText = wager;
+    document.getElementById('modal-potential-payout').innerText = `+${payout.toFixed(1)} min`;
+    document.getElementById('modal-net-profit').innerText = `+${netProfit.toFixed(1)} min`;
+  }
+
+  function confirmPlaceBet() {
+    const wager = AppState.currentModalWager;
+    if (wager > AppState.user.balance) {
+      showToast("Insufficient Screen Time balance!", false);
+      return;
+    }
+
+    // Deduct wager immediately
+    AppState.user.balance = Number((AppState.user.balance - wager).toFixed(1));
+    updateBalanceDisplays();
+
+    // Register active pre-game bet
+    const payout = calculatePayout(wager, AppState.currentModalSelection.odds);
+    const newBet = {
+      id: 'bet-' + Date.now(),
+      gameId: AppState.currentModalSelection.gameId,
+      league: AppState.currentModalSelection.league,
+      matchup: AppState.currentModalSelection.matchup,
+      type: AppState.currentModalSelection.type,
+      pickText: AppState.currentModalSelection.pickText,
+      wagerMinutes: wager,
+      odds: AppState.currentModalSelection.odds,
+      potentialPayout: payout,
+      isLive: false,
+      placedTime: 'Just now'
+    };
+
+    AppState.placedBets.unshift(newBet);
+    updateNavBadge();
+    closeBetModal();
+    showToast(`Locked in ${wager}m on ${newBet.pickText}!`);
+
+    checkLockoutState();
+  }
+
+  function renderMyBets() {
+    const liveContainer = document.getElementById('live-games-container');
+    const upcomingContainer = document.getElementById('upcoming-bets-container');
+    const payoutSummary = document.getElementById('potential-payout-summary');
+    const activeCount = document.getElementById('active-bets-count');
+
+    const totalUpside = AppState.placedBets.reduce((acc, b) => acc + b.potentialPayout, 0);
+    payoutSummary.innerText = `+${totalUpside.toFixed(1)} min`;
+    activeCount.innerText = AppState.placedBets.length;
+
+    const liveBets = AppState.placedBets.filter(b => b.isLive);
+    const upcomingBets = AppState.placedBets.filter(b => !b.isLive);
+
+    // 1. Live Games Section
+    if (liveBets.length === 0) {
+      liveContainer.innerHTML = `
+        <div class="bg-white rounded-2xl p-4 text-center border border-slate-100 text-xs text-slate-400">
+          No matches currently in-progress. Tap "Simulate Clock" to tip off pending bets!
+        </div>
+      `;
+    } else {
+      liveContainer.innerHTML = liveBets.map(bet => {
+        const coverBadge = bet.isCovering
+          ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
+               <i class="ph-bold ph-check"></i><span>COVERING (+${bet.potentialPayout.toFixed(1)}m)</span>
+             </span>`
+          : `<span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
+               <i class="ph-bold ph-x"></i><span>NOT COVERING (-${bet.wagerMinutes}m)</span>
+             </span>`;
+
+        return `
+          <div class="bg-white rounded-2xl p-4 border ${bet.isCovering ? 'border-emerald-200' : 'border-rose-200'} shadow-ios space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 live-dot"></span>
+                <span>${bet.league} • ${bet.gameClock}</span>
+              </span>
+              ${coverBadge}
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="flex items-center justify-between px-2 py-1 bg-slate-50 rounded-xl">
+              <div class="text-center flex-1">
+                <span class="text-xs font-bold text-slate-700 block">${bet.matchup.split(' vs ')[0]}</span>
+                <span class="text-xl font-black text-slate-900 font-mono">${bet.awayScore}</span>
+              </div>
+              <span class="text-xs font-bold text-slate-300 px-2">VS</span>
+              <div class="text-center flex-1">
+                <span class="text-xs font-bold text-slate-700 block">${bet.matchup.split(' vs ')[1]}</span>
+                <span class="text-xl font-black text-slate-900 font-mono">${bet.homeScore}</span>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center text-xs pt-1 border-t border-slate-100">
+              <div>
+                <span class="text-[10px] text-slate-400 font-medium block">Your Pick</span>
+                <span class="font-extrabold text-slate-800">${bet.pickText}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 font-medium block">Locked At Stake</span>
+                <span class="font-mono font-bold text-brand-700">${bet.wagerMinutes} min</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 2. Upcoming Bets Section
+    if (upcomingBets.length === 0) {
+      upcomingContainer.innerHTML = `
+        <div class="bg-white rounded-2xl p-4 text-center border border-slate-100 text-xs text-slate-400">
+          No pending upcoming slips. Place bets on upcoming games!
+        </div>
+      `;
+    } else {
+      upcomingContainer.innerHTML = upcomingBets.map(bet => {
+        return `
+          <div class="bg-white rounded-2xl p-4 border border-brand-100 shadow-ios space-y-2.5">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[10px] font-bold uppercase text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                  ${bet.league} Pre-Game
+                </span>
+                <h4 class="text-xs font-bold text-slate-900 mt-1">${bet.matchup}</h4>
+                <p class="text-xs text-brand-700 font-bold">${bet.pickText}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-black text-emerald-600 font-mono">+${bet.potentialPayout.toFixed(1)}m</span>
+                <span class="text-[10px] text-slate-400 block font-medium">Potential</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span class="text-xs text-slate-500 font-mono">Wager: <strong>${bet.wagerMinutes} min</strong></span>
+              <!-- Cancel & Full Refund -->
+              <button onclick="cancelUpcomingBet('${bet.id}')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs transition flex items-center space-x-1">
+                <i class="ph ph-arrow-u-up-left"></i>
+                <span>Cancel & Refund</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  function cancelUpcomingBet(betId) {
+    const betIndex = AppState.placedBets.findIndex(b => b.id === betId);
+    if (betIndex === -1) return;
+
+    const bet = AppState.placedBets[betIndex];
+    if (bet.isLive) {
+      showToast("Cannot cancel! Game has already tipped off.", false);
+      return;
+    }
+
+    AppState.user.balance = Number((AppState.user.balance + bet.wagerMinutes).toFixed(1));
+    AppState.placedBets.splice(betIndex, 1);
+    
+    updateBalanceDisplays();
+    updateNavBadge();
+    renderMyBets();
+    showToast(`Refunded ${bet.wagerMinutes} minutes to your balance!`);
+  }
+
+  function advanceSimulatedGames() {
+    const upcoming = AppState.placedBets.filter(b => !b.isLive);
+    if (upcoming.length > 0) {
+      const target = upcoming[0];
+      target.isLive = true;
+      target.gameClock = 'Q1 9:45';
+      target.homeScore = 21;
+      target.awayScore = 18;
+      target.isCovering = true;
+      showToast(`${target.matchup} has tipped off! Tracking live.`);
+      renderMyBets();
+      return;
+    }
+
+    const live = AppState.placedBets.filter(b => b.isLive);
+    if (live.length > 0) {
+      const active = live[0];
+      const userWon = Math.random() > 0.4;
+      if (userWon) {
+        AppState.user.balance = Number((AppState.user.balance + active.potentialPayout).toFixed(1));
+        showToast(`🎉 WINNER! ${active.matchup} finished. Gained +${active.potentialPayout.toFixed(1)}m screen time!`);
+      } else {
+        showToast(`❌ Final: Pick missed in ${active.matchup}. ${active.wagerMinutes}m lost.`);
+      }
+
+      AppState.placedBets = AppState.placedBets.filter(b => b.id !== active.id);
+      updateBalanceDisplays();
+      updateNavBadge();
+      renderMyBets();
+      checkLockoutState();
+    } else {
+      showToast("Place bets on upcoming matches first!");
+    }
+  }
+
+  function updateNavBadge() {
+    const badge = document.getElementById('nav-bets-badge');
+    if (AppState.placedBets.length > 0) {
+      badge.innerText = AppState.placedBets.length;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  function switchLeaderboard(tab) {
+    AppState.leaderboardTab = tab;
+    const btnGlobal = document.getElementById('lb-tab-global');
+    const btnFriends = document.getElementById('lb-tab-friends');
+
+    if (tab === 'global') {
+      btnGlobal.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-white bg-brand-600 shadow-sm transition";
+      btnFriends.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition";
+    } else {
+      btnFriends.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-white bg-brand-600 shadow-sm transition";
+      btnGlobal.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition";
+    }
+    renderLeaderboard();
+  }
+
+  function renderLeaderboard() {
+    const list = AppState.leaderboardTab === 'global' ? AppState.globalLeaderboard : AppState.friendsLeaderboard;
+    const sorted = [...list].sort((a, b) => b.minutes - a.minutes);
+
+    const podiumContainer = document.getElementById('podium-container');
+    const top1 = sorted[0];
+    const top2 = sorted[1];
+    const top3 = sorted[2];
+
+    podiumContainer.innerHTML = `
+      <!-- Rank 2 -->
+      <div class="flex flex-col items-center">
+        <span class="text-xs font-bold text-slate-400 mb-1">#2</span>
+        <div class="w-11 h-11 rounded-full bg-brand-100 border-2 border-brand-300 text-brand-700 font-bold flex items-center justify-center text-xs shadow-sm">
+          ${top2.avatar}
+        </div>
+        <span class="text-[11px] font-bold text-slate-700 mt-1 truncate max-w-[70px]">${top2.name.split(' ')[0]}</span>
+        <span class="text-[10px] font-mono font-bold text-brand-600">${top2.minutes.toFixed(0)}m</span>
+        <div class="w-14 h-12 bg-brand-100 rounded-t-xl mt-1.5"></div>
+      </div>
+
+      <!-- Rank 1 -->
+      <div class="flex flex-col items-center -translate-y-2">
+        <span class="text-amber-500 text-sm mb-0.5">👑</span>
+        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-400 to-amber-200 border-2 border-amber-300 text-amber-900 font-extrabold flex items-center justify-center text-sm shadow-md">
+          ${top1.avatar}
+        </div>
+        <span class="text-xs font-black text-slate-900 mt-1 truncate max-w-[80px]">${top1.name.split(' ')[0]}</span>
+        <span class="text-xs font-mono font-black text-amber-600">${top1.minutes.toFixed(0)}m</span>
+        <div class="w-16 h-16 bg-gradient-to-b from-brand-500 to-brand-600 rounded-t-xl mt-1.5 flex items-center justify-center text-white font-bold text-xs">
+          #1
+        </div>
+      </div>
+
+      <!-- Rank 3 -->
+      <div class="flex flex-col items-center">
+        <span class="text-xs font-bold text-slate-400 mb-1">#3</span>
+        <div class="w-10 h-10 rounded-full bg-brand-50 border border-brand-200 text-brand-600 font-bold flex items-center justify-center text-xs shadow-sm">
+          ${top3.avatar}
+        </div>
+        <span class="text-[11px] font-bold text-slate-700 mt-1 truncate max-w-[70px]">${top3.name.split(' ')[0]}</span>
+        <span class="text-[10px] font-mono font-bold text-brand-600">${top3.minutes.toFixed(0)}m</span>
+        <div class="w-14 h-8 bg-brand-100/70 rounded-t-xl mt-1.5"></div>
+      </div>
+    `;
+
+    const listContainer = document.getElementById('leaderboard-list');
+    listContainer.innerHTML = sorted.map((user, idx) => {
+      const isMe = user.isMe;
+      return `
+        <div class="px-4 py-3 flex items-center justify-between ${isMe ? 'bg-brand-50/90 font-bold' : 'hover:bg-slate-50'}">
+          <div class="flex items-center space-x-3">
+            <span class="text-xs font-bold font-mono w-5 text-slate-400">#${idx + 1}</span>
+            <div class="w-8 h-8 rounded-full ${isMe ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'} flex items-center justify-center text-xs font-bold">
+              ${user.avatar}
+            </div>
+            <div>
+              <p class="text-xs font-bold ${isMe ? 'text-brand-900' : 'text-slate-800'}">
+                ${user.name}
+              </p>
+              <p class="text-[10px] text-slate-400">${user.handle}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="font-mono font-black text-xs ${user.minutes === 0 ? 'text-rose-500' : 'text-brand-700'}">
+              ${user.minutes.toFixed(1)}m
+            </span>
+            ${user.locked ? '<span class="text-[9px] block text-rose-500 font-bold">🔒 LOCKED</span>' : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderDrawerApps() {
+    const container = document.getElementById('drawer-apps-list');
+    container.innerHTML = AppState.supportedApps.map(app => {
+      const isRestricted = AppState.restrictedApps.includes(app.id);
+      return `
+        <div class="flex items-center justify-between text-slate-700 py-0.5">
+          <span class="flex items-center space-x-2">
+            <i class="${app.icon} ${app.color} text-sm"></i>
+            <span class="font-medium">${app.name}</span>
+          </span>
+          ${isRestricted 
+            ? '<span class="text-[9px] font-bold bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded flex items-center space-x-0.5"><i class="ph-bold ph-lock"></i><span>LOCKED AT 0m</span></span>'
+            : '<span class="text-[9px] font-medium text-slate-400">Unrestricted</span>'
+          }
+        </div>
+      `;
+    }).join('');
+
+    const unlockBtn = document.getElementById('btn-unlock-app-limits');
+    if (AppState.user.balance < 15) {
+      unlockBtn.disabled = true;
+      unlockBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      unlockBtn.innerHTML = `<span>Insufficient Minutes (&lt; 15m required)</span>`;
+    } else {
+      unlockBtn.disabled = false;
+      unlockBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      unlockBtn.innerHTML = `<i class="ph-bold ph-key"></i><span>Unlock Editor (-15 Min)</span>`;
+    }
+  }
+
+  function openAppRestrictionsEditor() {
+    if (AppState.user.balance < 15) {
+      showToast("Requires 15 Screen Time Minutes to unlock!", false);
+      return;
+    }
+
+    // Deduct 15-minute modification penalty
+    AppState.user.balance = Number((AppState.user.balance - 15.0).toFixed(1));
+    updateBalanceDisplays();
+    showToast("Discipline Guard: Paid 15 minutes to unlock app editor.");
+
+    toggleSettingsDrawer(false);
+    
+    // Render the editable modal
+    const container = document.getElementById('app-editor-checkbox-list');
+    container.innerHTML = AppState.supportedApps.map(app => {
+      const isChecked = AppState.restrictedApps.includes(app.id);
+      return `
+        <label class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100">
+          <div class="flex items-center space-x-2">
+            <i class="${app.icon} ${app.color} text-base"></i>
+            <span class="text-xs font-bold text-slate-800">${app.name}</span>
+          </div>
+          <input type="checkbox" value="${app.id}" ${isChecked ? 'checked' : ''} class="app-editor-checkbox accent-brand-600 w-4 h-4 rounded">
+        </label>
+      `;
+    }).join('');
+
+    const modal = document.getElementById('app-editor-modal');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('opacity-100');
+  }
+
+  function closeAppRestrictionsEditor() {
+    const modal = document.getElementById('app-editor-modal');
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    modal.classList.remove('opacity-100');
+  }
+
+  function saveAppRestrictions() {
+    const checkboxes = document.querySelectorAll('.app-editor-checkbox:checked');
+    const selected = Array.from(checkboxes).map(c => c.value);
+
+    if (selected.length === 0) {
+      showToast("You must select at least 1 app to restrict!", false);
+      return;
+    }
+
+    AppState.restrictedApps = selected;
+    closeAppRestrictionsEditor();
+    renderDrawerApps();
+    showToast("Restricted apps updated!");
+    checkLockoutState();
+  }
+
+  function openHorseRaceModal() {
+    toggleSettingsDrawer(false);
+    renderHorseSelection();
+    updateDerbyDisplay();
+    const modal = document.getElementById('horse-modal');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('opacity-100');
+  }
+
+  function closeHorseRaceModal() {
+    const modal = document.getElementById('horse-modal');
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    modal.classList.remove('opacity-100');
+  }
+
+  function renderHorseSelection() {
+    const grid = document.getElementById('horse-selection-grid');
+    grid.innerHTML = AppState.horses.map((h, i) => {
+      const isSelected = AppState.selectedHorseIndex === i;
+      return `
+        <button onclick="selectHorse(${i})" class="p-2.5 rounded-xl border text-left transition ${
+          isSelected 
+            ? 'bg-amber-500 text-white border-amber-600 shadow-sm' 
+            : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
+        }">
+          <div class="flex justify-between items-center">
+            <span class="text-lg">${h.icon}</span>
+            <span class="font-mono font-black text-[11px]">${h.oddsRatio}:1</span>
+          </div>
+          <p class="font-extrabold text-xs mt-1 truncate">${h.name}</p>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function selectHorse(idx) {
+    AppState.selectedHorseIndex = idx;
+    renderHorseSelection();
+    updateDerbyDisplay();
+  }
+
+  function adjustDerbyWager(amt) {
+    const next = AppState.derbyWager + amt;
+    if (next >= 1 && next <= Math.floor(AppState.user.balance)) {
+      AppState.derbyWager = next;
+      updateDerbyDisplay();
+    }
+  }
+
+  function updateDerbyDisplay() {
+    document.getElementById('derby-wager-display').innerText = `${AppState.derbyWager}m`;
+    const selectedHorse = AppState.horses[AppState.selectedHorseIndex];
+    document.getElementById('start-derby-btn').innerText = `Start Race (${AppState.derbyWager}m on ${selectedHorse.name})`;
+  }
+
+  function startHorseRace() {
+    if (AppState.user.balance < AppState.derbyWager) {
+      showToast("Not enough screen time for wager!", false);
+      return;
+    }
+
+    const btn = document.getElementById('start-derby-btn');
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+
+    // Deduct wager
+    AppState.user.balance -= AppState.derbyWager;
+    updateBalanceDisplays();
+
+    const banner = document.getElementById('derby-result-banner');
+    banner.innerText = "And they're off...";
+
+    for (let i = 0; i < 4; i++) {
+      document.getElementById(`track-horse-${i}`).style.width = '20%';
+    }
+
+    let progress = [20, 20, 20, 20];
+    const interval = setInterval(() => {
+      for (let i = 0; i < 4; i++) {
+        const weight = (6 - AppState.horses[i].oddsRatio) * 1.5;
+        progress[i] += Math.random() * weight + 2.5;
+        if (progress[i] > 92) progress[i] = 92;
+        document.getElementById(`track-horse-${i}`).style.width = `${progress[i]}%`;
+      }
+    }, 200);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      const winnerIndex = progress.indexOf(Math.max(...progress));
+      const winningHorse = AppState.horses[winnerIndex];
+      const didWin = winnerIndex === AppState.selectedHorseIndex;
+
+      for (let i = 0; i < 4; i++) {
+        document.getElementById(`track-horse-${i}`).style.width = (i === winnerIndex) ? '95%' : `${progress[i]}%`;
+      }
+
+      if (didWin) {
+        const payout = AppState.derbyWager * (winningHorse.oddsRatio + 1);
+        AppState.user.balance += payout;
+        updateBalanceDisplays();
+        banner.innerHTML = `<span class="text-emerald-600 font-extrabold">🏆 ${winningHorse.name} WON! You won +${payout}m Screen Time!</span>`;
+        showToast(`Derby Victory: +${payout} minutes!`, true);
+      } else {
+        banner.innerHTML = `<span class="text-rose-600 font-bold">${winningHorse.name} won. You lost ${AppState.derbyWager}m.</span>`;
+        showToast(`${winningHorse.name} won the race. Minutes deducted.`, false);
+        checkLockoutState();
+      }
+
+      btn.disabled = false;
+      btn.classList.remove('opacity-50');
+    }, 4500);
+  }
+
+  function openLeaguePreferencesModal() {
+    toggleSettingsDrawer(false);
+    const list = document.getElementById('league-checkbox-list');
+    list.innerHTML = AppState.allLeagues.map(lg => {
+      const checked = AppState.userLeagues.includes(lg);
+      return `
+        <label class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 cursor-pointer">
+          <span class="text-xs font-bold text-slate-800">${lg}</span>
+          <input type="checkbox" value="${lg}" ${checked ? 'checked' : ''} class="league-checkbox accent-brand-600 w-4 h-4 rounded">
+        </label>
+      `;
+    }).join('');
+
+    const modal = document.getElementById('league-pref-modal');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('opacity-100');
+  }
+
+  function closeLeaguePreferencesModal() {
+    const modal = document.getElementById('league-pref-modal');
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    modal.classList.remove('opacity-100');
+  }
+
+  function saveLeaguePreferences() {
+    const checkboxes = document.querySelectorAll('.league-checkbox:checked');
+    const selected = Array.from(checkboxes).map(c => c.value);
+    if (selected.length === 0) {
+      showToast("Select at least 1 league!", false);
+      return;
+    }
+    AppState.userLeagues = selected;
+    closeLeaguePreferencesModal();
+    renderLeaguePills();
+    renderUpcomingGames();
+    showToast("Preferences saved!");
+  }
+
+  function toggleSettingsDrawer(open) {
+    const drawer = document.getElementById('settings-drawer');
+    const panel = document.getElementById('drawer-panel');
+    if (open) {
+      renderDrawerApps();
+      drawer.classList.remove('opacity-0', 'pointer-events-none');
+      drawer.classList.add('opacity-100');
+      panel.classList.remove('-translate-x-full');
+      panel.classList.add('translate-x-0');
+    } else {
+      panel.classList.remove('translate-x-0');
+      panel.classList.add('-translate-x-full');
+      drawer.classList.add('opacity-0', 'pointer-events-none');
+      drawer.classList.remove('opacity-100');
+    }
+  }
+
+  function toggleAuthMode(mode) {
+    AppState.authMode = mode;
+    const tabLogin = document.getElementById('tab-auth-login');
+    const tabSignup = document.getElementById('tab-auth-signup');
+    const flowSignin = document.getElementById('flow-signin');
+    const flowSignup = document.getElementById('flow-signup');
+
+    if (mode === 'login') {
+      tabLogin.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-white text-brand-700 shadow-sm";
+      tabSignup.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800";
+      flowSignin.classList.remove('hidden');
+      flowSignup.classList.add('hidden');
+    } else {
+      tabSignup.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-white text-brand-700 shadow-sm";
+      tabLogin.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800";
+      flowSignup.classList.remove('hidden');
+      flowSignin.classList.add('hidden');
+      // Reset signup flow to step 1
+      document.getElementById('signup-step-1').classList.remove('hidden');
+      document.getElementById('signup-step-2').classList.add('hidden');
+    }
+  }
+
+  function handleSignInSubmit() {
+    const username = document.getElementById('signin-username').value.trim() || 'JordanD';
+    AppState.user.username = username;
+    AppState.user.handle = `@${username.toLowerCase()}`;
+    document.getElementById('drawer-username').innerText = AppState.user.handle;
+    document.getElementById('drawer-avatar').innerText = username.slice(0, 2).toUpperCase();
+
+    document.getElementById('auth-modal').classList.add('hidden');
+    renderDrawerApps();
+    renderLeaguePills();
+    renderUpcomingGames();
+    showToast(`Welcome back, ${username}!`);
+  }
+
+  function goToSignupStep2() {
+    const username = document.getElementById('signup-username').value.trim();
+    if (!username) {
+      showToast("Please enter a username", false);
+      return;
+    }
+
+    document.getElementById('signup-step-1').classList.add('hidden');
+    document.getElementById('signup-step-2').classList.remove('hidden');
+
+    // Populate leagues pills
+    const leagueContainer = document.getElementById('signup-league-pills');
+    leagueContainer.innerHTML = AppState.allLeagues.map(lg => {
+      const active = AppState.userLeagues.includes(lg);
+      return `
+        <button type="button" onclick="toggleSignupLeague('${lg}', this)" class="p-2 rounded-xl border font-bold text-xs transition ${
+          active ? 'bg-brand-600 text-white border-brand-700' : 'bg-white text-slate-700 border-slate-200'
+        }">
+          ${lg}
+        </button>
+      `;
+    }).join('');
+
+    // Populate apps checklist
+    const appsContainer = document.getElementById('signup-apps-checklist');
+    appsContainer.innerHTML = AppState.supportedApps.map(app => {
+      const checked = AppState.restrictedApps.includes(app.id);
+      return `
+        <label class="flex items-center justify-between text-slate-700 cursor-pointer py-0.5">
+          <span class="flex items-center space-x-2">
+            <i class="${app.icon} ${app.color} text-sm"></i>
+            <span class="font-medium text-xs">${app.name}</span>
+          </span>
+          <input type="checkbox" value="${app.id}" ${checked ? 'checked' : ''} class="signup-app-checkbox accent-brand-600 rounded">
+        </label>
+      `;
+    }).join('');
+  }
+
+  function backToSignupStep1() {
+    document.getElementById('signup-step-2').classList.add('hidden');
+    document.getElementById('signup-step-1').classList.remove('hidden');
+  }
+
+  function toggleSignupLeague(league, btn) {
+    if (AppState.userLeagues.includes(league)) {
+      if (AppState.userLeagues.length === 1) return;
+      AppState.userLeagues = AppState.userLeagues.filter(l => l !== league);
+      btn.className = "p-2 rounded-xl border font-bold text-xs transition bg-white text-slate-700 border-slate-200";
+    } else {
+      AppState.userLeagues.push(league);
+      btn.className = "p-2 rounded-xl border font-bold text-xs transition bg-brand-600 text-white border-brand-700";
+    }
+  }
+
+  function finishSignUp() {
+    const checkboxes = document.querySelectorAll('.signup-app-checkbox:checked');
+    const selectedApps = Array.from(checkboxes).map(c => c.value);
+
+    if (selectedApps.length === 0) {
+      showToast("Please choose at least 1 app to lock!", false);
+      return;
+    }
+
+    const username = document.getElementById('signup-username').value.trim() || 'NewUser';
+    AppState.user.username = username;
+    AppState.user.handle = `@${username.toLowerCase()}`;
+    AppState.restrictedApps = selectedApps;
+    AppState.user.balance = 60.0;
+
+    document.getElementById('drawer-username').innerText = AppState.user.handle;
+    document.getElementById('drawer-avatar').innerText = username.slice(0, 2).toUpperCase();
+
+    document.getElementById('auth-modal').classList.add('hidden');
+    updateBalanceDisplays();
+    renderDrawerApps();
+    renderLeaguePills();
+    renderUpcomingGames();
+    showToast(`Account created! 60 minutes granted.`);
+  }
+
+  function simulateLogout() {
+    toggleSettingsDrawer(false);
+    toggleAuthMode('login');
+    document.getElementById('auth-modal').classList.remove('hidden');
+  }
+
+  function updateSystemClock() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    hours = hours % 12 || 12;
+    document.getElementById('system-time').innerText = `${hours}:${minutes}`;
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    updateSystemClock();
+    setInterval(updateSystemClock, 30000);
+    renderLeaguePills();
+    renderUpcomingGames();
+    renderMyBets();
+    updateBalanceDisplays();
+    updateNavBadge();
+    renderDrawerApps();
+  });
+</script>
+
+</body>
+</html>
